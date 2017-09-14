@@ -1,0 +1,238 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    /* environment parameters */
+    "region": {
+      "type": "string",
+      "minLength": 1
+    },
+    "accountRegionEnvironmentPrefix": {
+      "type": "string",
+      "minLength": 1
+    },
+    "securityZone": {
+      "type": "string",
+      "minLength": 1
+    },
+    /* vm config and size parameters */
+    "vmName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "vmHostId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "imageSku": {
+      "type": "string",
+      "minLength": 1
+    },
+    "storageSku": {
+      "type": "string",
+      "minLength": 1
+    },
+    "vmSize": {
+      "type": "string",
+      "minLength": 1
+    },
+    /* localadmin parameters */
+    "localadminUsername": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+        "description": "localadminUsername"
+      }
+    },
+    "localadminPassword": {
+      "type": "securestring",
+      "minLength": 1,
+      "metadata": {
+        "description": "localadmin password"
+      }
+    },
+    /* workspace parameters */
+    "workspaceResourceGroup": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+        "description": "ResourceGroup for workspace that VM to join"
+      }
+    },
+    "workspaceName": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+        "description": "Workspace name that VM to join"
+      }
+    },
+    /* vnet parameters */
+    "existingVNETResourceGroupName": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+        "description": "ResourceGroup for VNet to place VM into"
+      }
+    },
+    "existingVNETName": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+        "description": "VNet to place VM into"
+      }
+    },
+    "subnetName": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+        "description": "Subnet to place VM into"
+      }
+    },
+    /* domain join parameters */
+    "domainToJoin": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+        "description": "domainToJoin"
+      }
+    },
+    "ouPath": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+        "description": "ouPath for computer in Active Directory"
+      }
+    },
+    "domainUsername": {
+      "type": "string",
+      "minLength": 1,
+      "metadata": {
+        "description": "Username for domain join credentials"
+      }
+    },
+    "domainPassword": {
+      "type": "securestring",
+      "minLength": 1,
+      "metadata": {
+        "description": "Password for domain join credentials"
+      }
+    }
+  },
+  "variables": {
+/*    "region": "Canada Central", */
+    "vnetRef": "[resourceId(subscription().subscriptionId, parameters('existingVNETResourceGroupName'),'Microsoft.Network/virtualNetworks',parameters('existingVNETName'))]",
+    "subnetRef": "[concat(variables('vnetRef'), '/subnets/', parameters('subnetName'))]",
+    "nicName": "[concat(parameters('accountRegionEnvironmentPrefix'), parameters('securityZone'), 'nic0', parameters('vmHostId'))]",
+    "vmRmTemplateURI": "https://<blobname>.blob.core.windows.net/<container>/newVM.json",
+    "domainJoinOptions": "3",
+    "keyVaultRef": "/subscriptions/<your_subscription_id>/resourceGroups/<your_resource_group>/providers/Microsoft.KeyVault/vaults/<keyvaultname>"
+  },
+  "resources":
+  [
+    {
+      "name": "[variables('nicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[parameters('region')]",
+      "apiVersion": "2016-03-30",
+      "dependsOn":
+      [
+      ],
+      "tags":
+      {
+        "displayName": "vmNic"
+      },
+      "properties":
+      {
+        "ipConfigurations":
+        [
+          {
+            "name": "ipconfig1",
+            "properties":
+            {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet":
+              {
+                "id": "[variables('subnetRef')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2016-02-01",
+      "name": "vmTemplate",
+      "type": "Microsoft.Resources/deployments",
+      "dependsOn":
+      [
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"
+      ],
+      "properties":
+      {
+        "mode": "Incremental",
+        "templateLink": {
+          "uri": "[variables('vmRmTemplateURI')]",
+          "contentVersion": "1.0.0.0"
+        },
+        "parameters": {
+          "region": {
+            "value": "[parameters('region')]"
+          },
+          "vmName": {
+            "value": "[parameters('vmName')]"
+          },
+          "nicName": {
+            "value": "[variables('nicName')]"
+          },
+          "vmSize": {
+            "value": "[parameters('vmSize')]"
+          },
+          "workspaceResourceGroup": {
+            "value": "[parameters('workspaceResourceGroup')]"
+          },
+          "workspaceName": {
+            "value": "[parameters('workspaceName')]"
+          },
+          "domainUsername": {
+            "reference": {
+              "keyVault": {
+                "id": "[variables('keyVaultRef')]"
+              },
+              "secretName": "[parameters('domainUsername')]"
+            }
+          },
+          "domainPassword": {
+            "reference": {
+              "keyVault": {
+                "id": "[variables('keyVaultRef')]"
+              },
+              "secretName": "[parameters('domainPassword')]"
+            }
+          },
+          "domainToJoin": {
+            "value": "[parameters('domainToJoin')]"
+          },
+          "vmAdminUsername": {
+            "value": "[parameters('localadminUsername')]"
+          },
+          "vmAdminPassword": {
+            "value": "[parameters('localadminPassword')]"
+          },
+          "ouPath": {
+            "value": "[parameters('ouPath')]"
+          },
+          "windowsOSVersion": {
+            "value": "[parameters('imageSku')]"
+          },
+          "storageSku": {
+            "value": "[parameters('storageSku')]"
+          }
+        }
+      }
+    }
+  ],
+  "outputs":
+  {
+
+  }
+}
