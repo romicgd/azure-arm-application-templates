@@ -1,0 +1,57 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "sslCertificateData": {
+            "reference": {
+                "keyVault": {
+                    "id": "clientKeyVaultIDFilledAutomatically"
+                },
+                "secretName": "sslCertificateData"
+            }
+        },
+        "sslCertificatePassword": {
+            "reference": {
+                "keyVault": {
+                    "id": "clientKeyVaultIDFilledAutomatically"
+                },
+                "secretName": "sslCertificatePassword"
+            }
+        },  
+        "backendPublicKeyData": {
+            "reference": {
+                "keyVault": {
+                    "id": "clientKeyVaultIDFilledAutomatically"
+                },
+                "secretName": "backendPublicKeyData"
+            }
+        },              
+        "applicationGatewayName": {
+            "value": null
+        },
+        "NetworkResourceGroup": {
+            "Value": "networkRG"
+        },
+        "virtualNetworkName": {
+            "Value": "VNetName"
+        },
+        "subnetName": {
+            "Value": "GatewaySubnetName"
+        },
+        "applicationGatewaySize": {
+            "Value": "Standard_Small"
+        },
+        "WebAppName": {
+            "Value": "WebAppName"
+        },
+        "customDNS": {
+            "Value": "customDNS"
+        },
+        "frontendPort": {
+            "Value": 443
+          },
+        "backendPort": {
+            "Value": 443
+          }
+    }
+}

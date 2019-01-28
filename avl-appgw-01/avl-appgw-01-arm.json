@@ -1,0 +1,251 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "sslCertificateData": {
+      "type": "string",
+      "metadata": {
+          "description": "The base-64 encoded SSL certificate PFX data. Must be supplied via a parameters file references to a Key Vault / Secret Name."
+      }
+    },
+    "sslCertificatePassword": {
+        "type": "securestring",
+        "metadata": {
+            "description": "The SSL certificate password. Must be supplied via a parameters file references to a Key Vault / Secret Name."
+        }
+    },    
+    "backendPublicKeyData": {
+      "type": "string",
+      "metadata": {
+          "description": "Base-64 encoded form of the .cer file. This is the public key for the cert on the backend."
+      }
+    },
+    "applicationGatewayName": {
+      "type": "string",
+      "defaultValue": "applicationGateway1",
+      "metadata": {
+        "description": "application gateway name"
+      }
+    },
+    "NetworkResourceGroup": {
+      "type": "string",
+      "defaultValue": "NetworkResourceGroup",
+      "metadata": {
+        "description": "Name of the network resource group."
+      }
+    },
+    "virtualNetworkName": {
+      "type": "string",
+      "defaultValue": "virtualNetworkName",
+      "metadata": {
+        "description": "Name of VNet."
+      }
+    },
+    "subnetName": {
+      "type": "string",
+      "defaultValue": "subnetName",
+      "metadata": {
+        "description": "Name of Gateway subnet."
+      }
+    },
+    "applicationGatewaySize": {
+      "type": "string",
+      "defaultValue": "Standard_Small",
+      "metadata": {
+        "description": "applicationGatewaySku"
+      }
+    },
+    "WebAppName": {
+      "type": "string",
+      "defaultValue": "WebAppName",
+      "metadata": {
+        "description": "WebAppName"
+      }
+    },
+    "customDNS": {
+      "type": "string",
+      "defaultValue": "WebAppName.yourdomain",
+      "metadata": {
+        "description": "customDNS"
+      }
+    },
+    "frontendPort": {
+      "type": "int",
+      "defaultValue": 443,
+      "metadata": {
+        "description": "frontendPort"
+      }
+    },
+    "backendPort": {
+      "type": "int",
+      "defaultValue": 443,
+      "metadata": {
+        "description": "backendPort"
+      }
+    }
+   },
+  "variables": {
+    "cookieBasedAffinity": "Disabled",
+    "applicationGatewayInstanceCount": 1,
+    "subnetid": "[resourceId(parameters('NetworkResourceGroup'), 'Microsoft.Network/virtualNetworks/subnets', parameters('virtualNetworkName'), parameters('subnetName'))]",
+    "backendAddresses": "[concat(parameters('WebAppName'), '.azurewebsites.net')]",
+    "applicationGatewayID": "[resourceId('Microsoft.Network/applicationGateways',parameters('applicationGatewayName'))]",
+    "probeName" : "[concat(parameters('WebAppName'), 'HealthProbe')]",   
+    "frontEndCertName" : "[concat(parameters('WebAppName'), 'FrontEndCertificate')]",
+    "backEndCertName" : "[concat(parameters('WebAppName'), 'BackEndCertificate')]",
+    "ruleName" : "[concat(parameters('WebAppName'), 'Rule')]",    
+    "backEndProtocol" : "[if(equals(parameters('backendPort'), '80'), 'Http', 'Https')]"
+  },
+  "resources": [
+      {
+      "apiVersion": "2017-06-01",
+      "name": "[parameters('applicationGatewayName')]",
+      "type": "Microsoft.Network/applicationGateways",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "sku": {
+          "name": "[parameters('applicationGatewaySize')]",
+          "tier": "Standard",
+          "capacity": "[variables('applicationGatewayInstanceCount')]"
+        },
+        "sslCertificates": [
+          {
+              "name": "[variables('frontEndCertName')]",
+              "properties": {
+                  "data": "[parameters('sslCertificateData')]",
+                  "password": "[parameters('sslCertificatePassword')]"
+              }
+          }
+        ],
+        "authenticationCertificates": [
+          {
+            "properties": {
+              "data": "[parameters('backendPublicKeyData')]"
+            },
+            "name": "[variables('backEndCertName')]"
+          }
+        ],               
+        "gatewayIPConfigurations": [
+          {
+              "name": "appGatewayIpConfig",
+              "properties": {
+                  "subnet": {
+                    "id": "[variables('subnetid')]"
+                  }
+              },
+              "type": "Microsoft.Network/applicationGateways/gatewayIPConfigurations"
+          }
+        ], 
+        "frontendIPConfigurations": [
+          {
+            "name": "appGatewayFrontendIP",
+            "properties": {
+              "subnet": {
+                "id": "[variables('subnetid')]"
+              }
+            }
+          }
+        ],
+        "frontendPorts": [
+          {
+            "name": "appGatewayFrontendPort",
+            "properties": {
+              "Port": "[parameters('frontendPort')]"
+            }
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "appGatewayBackendPool",
+            "properties": {
+              "BackendAddresses": [
+                {
+                  "fqdn": "[variables('backendAddresses')]"
+                }
+              ]
+            }
+          }
+        ],
+        "backendHttpSettingsCollection": [
+          {
+            "name": "appGatewayBackendHttpSettings",
+            "properties": {
+              "Port": "[parameters('backendPort')]",
+              "Protocol": "[if(equals(parameters('backendPort'), '80'), 'Http', 'Https')]",
+              "CookieBasedAffinity": "[variables('cookieBasedAffinity')]",
+              "AuthenticationCertificates": [
+                {
+                  "Id": "[concat(variables('applicationGatewayID'), '/authenticationCertificates/', variables('backEndCertName'))]"
+                }
+              ],              
+              "ProbeEnabled": true,
+              "Probe": {
+                "id": "[concat(variables('applicationGatewayID'), '/probes/', variables('probeName'))]"
+              }              
+            }
+          }
+        ],
+        "httpListeners": [
+          {
+            "name": "appGatewayHttpListener",
+            "properties": {
+              "FrontendIpConfiguration": {
+                "Id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/frontendIPConfigurations/appGatewayFrontendIP')]"
+              },
+              "FrontendPort": {
+                "Id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/frontendPorts/appGatewayFrontendPort')]"
+              },
+              "Protocol": "Https",
+              "SslCertificate": {
+                "Id": "[concat(variables('applicationGatewayID'), '/sslCertificates/', variables('frontEndCertName'))]"
+              },
+              "HostName": "[parameters('customDNS')]",
+              "RequireServerNameIndication": "true"                            
+            }
+          }
+        ],
+        "requestRoutingRules": [
+          {
+            "Name": "[variables('ruleName')]",
+            "properties": {
+              "RuleType": "Basic",
+              "httpListener": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/httpListeners/appGatewayHttpListener')]"
+              },
+              "backendAddressPool": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendAddressPools/appGatewayBackendPool')]"
+              },
+              "backendHttpSettings": {
+                "id": "[concat(resourceId('Microsoft.Network/applicationGateways', parameters('applicationGatewayName')), '/backendHttpSettingsCollection/appGatewayBackendHttpSettings')]"
+              }
+            }
+          }
+        ],
+        "probes": [
+          {
+            "name": "[variables('probeName')]",
+            "properties": {
+              "provisioningState": "Succeeded",
+              "protocol": "[if(equals(parameters('backendPort'), '80'), 'Http', 'Https')]",
+              "host": "[parameters('customDNS')]",
+              "path": "/",
+              "interval": 30,
+              "timeout": 30,
+              "unhealthyThreshold": 3,
+              "pickHostNameFromBackendHttpSettings": false,
+              "minServers": 0,
+              "match": {
+                "body": "",
+                "statusCodes": [
+                  "200-401"
+                ]
+              }
+            },
+            "type": "Microsoft.Network/applicationGateways/probes"
+          }
+        ]        
+      }
+    }
+  ]
+}
+
