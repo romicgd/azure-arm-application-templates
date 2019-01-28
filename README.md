@@ -1,4 +1,4 @@
-# Azure Resource Manager QuickStart Templates
+# Azure Resource Manager Templates
 
 The list of templates with brief descriptions is below. Additional descriptions are provided in each folder Readme.
 
