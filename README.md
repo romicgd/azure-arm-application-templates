@@ -1,9 +1,7 @@
-# ARM templates for application deployment
+# Azure Resource Manager QuickStart Templates
 
-## Provision Single VM auto-domain join and OMS workspace enrollment
+The list of templates with brief descriptions is below. Additional descriptions are provided in each folder Readme.
 
-```powershell
-	 ./deploy_single_vm.ps1 $hostname $subscriptionId $resourceGroupName $localadminPassword $domainUsername $domainPassword
-```
-
-Join domain with credentials in Azure keyvault credits to https://blogs.msdn.microsoft.com/kaevans/2017/07/15/join-a-virtual-machine-to-existing-domain-with-key-vault-and-arm-templates/
+- ```avl-appgw-01``` Application gateway with end-to-end SSL
+- ```single-vm-domain-joined```	domain-joined VM
+. 

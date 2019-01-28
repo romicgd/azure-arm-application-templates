@@ -4,7 +4,7 @@ SSL certificate and Azure Key Vault are loaded into Azure Key Vault.
 
 Note: Since Application Gateway  does not integrate with Azure Key Vault (https://docs.microsoft.com/en-us/azure/application-gateway/application-gateway-faq) certificates we load certificate into Key Value secret as a 64-bit encoded string.
 
-Load pfx
+### Load pfx into Azure Key Vault
 ```powershell
 $pfxFilePath = 'your-pfx-path'
 $pwd = 'your-pfx-password'
@@ -19,7 +19,7 @@ $secretContentType = 'application/x-pkcs12'
 Set-AzureKeyVaultSecret -VaultName 'your-key-vault-name' -Name 'pfx-secret-name' -SecretValue $Secret -ContentType $secretContentType
 ```
 
-Load certificate
+### Load public key certificate into Azure Key Vault
 ```powershell
 $cerFilePath = 'backend public key cer path'
 $certContentEncoded = Get-content $cerFilePath -Raw
