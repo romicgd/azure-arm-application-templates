@@ -20,6 +20,8 @@ Set-AzureKeyVaultSecret -VaultName 'your-key-vault-name' -Name 'pfx-secret-name'
 ```
 
 ### Load public key certificate into Azure Key Vault
+Note: Need to remove `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----` before putting certificate into Azure key Vault.
+
 ```powershell
 $cerFilePath = 'backend public key cer path'
 $certContentEncoded = Get-content $cerFilePath -Raw
